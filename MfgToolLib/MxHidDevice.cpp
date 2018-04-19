@@ -392,18 +392,15 @@ int MxHidDevice::Write(UCHAR* _buf, ULONG _size)
 
 #ifdef __linux__
 //    struct libusb_device_handle  is the structure of handle
-    int ret;
-    int transferCount=_size;
-    int last_trans = 0;
     int report=_buf[0];
     const int control_transfer =
 		LIBUSB_ENDPOINT_OUT |
 		LIBUSB_REQUEST_TYPE_CLASS |
 		LIBUSB_RECIPIENT_INTERFACE
 		;
-   // do{
+
     uint16_t wValue = (HID_REPORT_TYPE_OUTPUT << 8) | report;
-    ret = libusb_control_transfer(
+    int ret = libusb_control_transfer(
     		m_libusbdevHandle,	// dev_hanlde
 			control_transfer,	// bmRequestType
 			HID_SET_REPORT,		// bRequest
@@ -414,7 +411,6 @@ int MxHidDevice::Write(UCHAR* _buf, ULONG _size)
 			1000				// timeout
 		);
 
-    last_trans += (ret > 0) ? ret - 1 : 0;
     if (ret > 0)
 	    ret = 0;
 
@@ -1034,9 +1030,10 @@ BOOL MxHidDevice::RunPlugIn(UCHAR *pFileDataBuf, ULONGLONG dwFileSize)
 					PhyRAMAddr4KRL = EndianSwap(pImage->load);
 					int CodeOffset = pIVT->Reserved + sizeof(Uboot_header) + ImgIVTOffset;
 					unsigned int ExecutingAddr = EndianSwap(pImage->entry);
-					//LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### RunPlugIn: Pre-TransData %i"), 2);
 					if (!TransData(PhyRAMAddr4KRL, (unsigned int)(dwFileSize - CodeOffset), pDataBuf + CodeOffset))
 					{
+						LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T("RunPlugIn(): TransData(0x%X, 0x%X,0x%X) failed.\n"),
+							PhyRAMAddr4KRL, dwFileSize, pDataBuf);
 						goto ERR_HANDLE;
 					}
 
@@ -1133,6 +1130,7 @@ ERR_HANDLE:
 
 BOOL MxHidDevice::TransData(UINT address, UINT byteCount, const unsigned char * pBuf)
 {
+	LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### TransData: pBuf == %X, *pBuf == %X"), pBuf, *pBuf);
 	SDPCmd SDPCmd;
 
 	UINT MaxHidTransSize = m_Capabilities.OutputReportByteLength - 1;
@@ -1196,7 +1194,7 @@ BOOL MxHidDevice::AddIvtHdr(UINT32 ImageStartAddr)
 
 	if(pIvtHeader->IvtBarker != IVT_BARKER_HEADER)
 	{
-		FlashHdrAddr = ImageStartAddr - sizeof(IvtHeader); ;
+		FlashHdrAddr = ImageStartAddr - sizeof(IvtHeader);
 		//Read the data first
 		if ( !ReadData(FlashHdrAddr, sizeof(IvtHeader), FlashHdr) )
 		{
