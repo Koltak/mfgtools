@@ -16,3 +16,6 @@
 /TestPrgm/test_and_fuse.sh
 /TestPrgm/UICfg.ini
 /MfgToolLib/Makefile
+/MfgToolLib/libMfgToolLibStatic.a
+/TestPrgm/libMfgToolLibStatic.a
+/TestPrgm/mfgtoolcli
