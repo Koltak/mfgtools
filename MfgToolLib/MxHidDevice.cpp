@@ -162,7 +162,6 @@ int MxHidDevice::AllocateIoBuffers()
 
      m_pWriteReport = (_MX_HID_DATA_REPORT*)malloc(1025);
      m_pReadReport = (_MX_HID_DATA_REPORT*)malloc(1025);
-
 	return ERROR_SUCCESS;
 }
 
@@ -398,13 +397,24 @@ int MxHidDevice::Write(UCHAR* _buf, ULONG _size)
     int last_trans = 0;
     int report=_buf[0];
     const int control_transfer =
-	LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS |
-	LIBUSB_RECIPIENT_INTERFACE;
-   
-    ret = libusb_control_transfer(m_libusbdevHandle, control_transfer,
-		HID_SET_REPORT,
-		(HID_REPORT_TYPE_OUTPUT << 8) | report,
-		0, _buf+last_trans, _size, 1000);
+		LIBUSB_ENDPOINT_OUT |
+		LIBUSB_REQUEST_TYPE_CLASS |
+		LIBUSB_RECIPIENT_INTERFACE
+		;
+   // do{
+    uint16_t wValue = (HID_REPORT_TYPE_OUTPUT << 8) | report;
+    unsigned char* data = _buf+last_trans;
+    ret = libusb_control_transfer(
+    		m_libusbdevHandle,	// dev_hanlde
+			control_transfer,	// bmRequestType
+			HID_SET_REPORT,		// bRequest
+			wValue,				// wValue
+			0, 					// wIndex
+			_buf,				// data
+			_size,				// wLength
+			1000				// timeout
+		);
+
     last_trans += (ret > 0) ? ret - 1 : 0;
     if (ret > 0)
 	    ret = 0;
@@ -458,7 +468,7 @@ BOOL MxHidDevice::SendCmd(PSDPCmd pSDPCmd)
 		return FALSE;
 	}
 	//Send the report to USB HID device
-	if ( Write((unsigned char *)m_pWriteReport, 17) <0)
+	if ( Write((unsigned char *)m_pWriteReport, 17) < 0)
 	{
 		return FALSE;
 	}
@@ -468,6 +478,9 @@ BOOL MxHidDevice::SendCmd(PSDPCmd pSDPCmd)
 
 BOOL MxHidDevice::SendData(const unsigned char * DataBuf, UINT ByteCnt)
 {
+#ifdef _DEBUG
+	LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### SendData: DataBuf == %X, *DataBuf == %X"), DataBuf, *DataBuf);
+#endif
 	if(m_pWriteReport == NULL)
 	{
 		return FALSE;
@@ -605,6 +618,7 @@ BOOL MxHidDevice::Jump()
 
 BOOL MxHidDevice::Jump(UINT RAMAddress, BOOL isPlugin)
 {
+
     SDPCmd SDPCmd;
     CString LogStr;
 
@@ -1001,6 +1015,7 @@ BOOL MxHidDevice::RunPlugIn(UCHAR *pFileDataBuf, ULONGLONG dwFileSize)
 		//Download plugin data into IRAM.
 		PlugInAddr = pIVT->ImageStartAddr;
 		PlugInDataOffset = pIVT->ImageStartAddr - pIVT->SelfAddr;
+		//LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### RunPlugIn: Pre-TransData %i"),1);
 		if (!TransData(pIVT->SelfAddr, pPluginDataBuf->ImageSize, (PUCHAR)pIVT))
 		{
 			LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T("RunPlugIn(): TransData(0x%X, 0x%X,0x%X) failed."),
@@ -1023,7 +1038,7 @@ BOOL MxHidDevice::RunPlugIn(UCHAR *pFileDataBuf, ULONGLONG dwFileSize)
 					PhyRAMAddr4KRL = EndianSwap(pImage->load);
 					int CodeOffset = pIVT->Reserved + sizeof(Uboot_header) + ImgIVTOffset;
 					unsigned int ExecutingAddr = EndianSwap(pImage->entry);
-
+					//LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### RunPlugIn: Pre-TransData %i"), 2);
 					if (!TransData(PhyRAMAddr4KRL, (unsigned int)(dwFileSize - CodeOffset), pDataBuf + CodeOffset))
 					{
 						LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T("RunPlugIn(): TransData(0x%X, 0x%X,0x%X) failed.\n"),
@@ -1124,6 +1139,7 @@ ERR_HANDLE:
 
 BOOL MxHidDevice::TransData(UINT address, UINT byteCount, const unsigned char * pBuf)
 {
+	LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### TransData: pBuf == %X, *pBuf == %X"), pBuf, *pBuf);
 	SDPCmd SDPCmd;
 
 	UINT MaxHidTransSize = m_Capabilities.OutputReportByteLength - 1;
@@ -1187,7 +1203,8 @@ BOOL MxHidDevice::AddIvtHdr(UINT32 ImageStartAddr)
 
 	if(pIvtHeader->IvtBarker != IVT_BARKER_HEADER)
 	{
-		FlashHdrAddr = ImageStartAddr - sizeof(IvtHeader);
+		int ivtHeaderSize = sizeof(IvtHeader);
+		FlashHdrAddr = ImageStartAddr - ivtHeaderSize ;
 		//Read the data first
 		if ( !ReadData(FlashHdrAddr, sizeof(IvtHeader), FlashHdr) )
 		{

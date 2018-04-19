@@ -921,6 +921,7 @@ DWORD ParseUclXml(MFGLIB_VARS *pLibVars)
 	//read Ucl.xml
 	//	pLibVars->g_strUclFilename = "ucl2.xml";
 	int pos = pLibVars->g_strUclFilename.ReverseFind(_T('/'));
+
 	pLibVars->g_strPath = pLibVars->g_strUclFilename.Left(pos+1);  //+1 for add '\' at the last
 
 	CAnsiString uclString;
