@@ -403,7 +403,6 @@ int MxHidDevice::Write(UCHAR* _buf, ULONG _size)
 		;
    // do{
     uint16_t wValue = (HID_REPORT_TYPE_OUTPUT << 8) | report;
-    unsigned char* data = _buf+last_trans;
     ret = libusb_control_transfer(
     		m_libusbdevHandle,	// dev_hanlde
 			control_transfer,	// bmRequestType
@@ -478,9 +477,6 @@ BOOL MxHidDevice::SendCmd(PSDPCmd pSDPCmd)
 
 BOOL MxHidDevice::SendData(const unsigned char * DataBuf, UINT ByteCnt)
 {
-#ifdef _DEBUG
-	LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### SendData: DataBuf == %X, *DataBuf == %X"), DataBuf, *DataBuf);
-#endif
 	if(m_pWriteReport == NULL)
 	{
 		return FALSE;
@@ -1016,7 +1012,6 @@ BOOL MxHidDevice::RunPlugIn(UCHAR *pFileDataBuf, ULONGLONG dwFileSize)
 		//Download plugin data into IRAM.
 		PlugInAddr = pIVT->ImageStartAddr;
 		PlugInDataOffset = pIVT->ImageStartAddr - pIVT->SelfAddr;
-		//LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### RunPlugIn: Pre-TransData %i"),1);
 		if (!TransData(pIVT->SelfAddr, pPluginDataBuf->ImageSize, (PUCHAR)pIVT))
 		{
 			LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T("RunPlugIn(): TransData(0x%X, 0x%X,0x%X) failed."),
@@ -1042,8 +1037,6 @@ BOOL MxHidDevice::RunPlugIn(UCHAR *pFileDataBuf, ULONGLONG dwFileSize)
 					//LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### RunPlugIn: Pre-TransData %i"), 2);
 					if (!TransData(PhyRAMAddr4KRL, (unsigned int)(dwFileSize - CodeOffset), pDataBuf + CodeOffset))
 					{
-						LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T("RunPlugIn(): TransData(0x%X, 0x%X,0x%X) failed.\n"),
-							PhyRAMAddr4KRL, dwFileSize, pDataBuf);
 						goto ERR_HANDLE;
 					}
 
@@ -1140,7 +1133,6 @@ ERR_HANDLE:
 
 BOOL MxHidDevice::TransData(UINT address, UINT byteCount, const unsigned char * pBuf)
 {
-	LogMsg(LOG_MODULE_MFGTOOL_LIB, LOG_LEVEL_FATAL_ERROR, _T(" ### TransData: pBuf == %X, *pBuf == %X"), pBuf, *pBuf);
 	SDPCmd SDPCmd;
 
 	UINT MaxHidTransSize = m_Capabilities.OutputReportByteLength - 1;
@@ -1204,8 +1196,7 @@ BOOL MxHidDevice::AddIvtHdr(UINT32 ImageStartAddr)
 
 	if(pIvtHeader->IvtBarker != IVT_BARKER_HEADER)
 	{
-		int ivtHeaderSize = sizeof(IvtHeader);
-		FlashHdrAddr = ImageStartAddr - ivtHeaderSize ;
+		FlashHdrAddr = ImageStartAddr - sizeof(IvtHeader); ;
 		//Read the data first
 		if ( !ReadData(FlashHdrAddr, sizeof(IvtHeader), FlashHdr) )
 		{

@@ -577,12 +577,6 @@ void* CmdListThreadProc(void* pParam)
 
 					cmdIt++;
 
-					bool foo = false;
-					if(foo){
-
-						cmdIt--;
-
-					}
 					//In current state(Bootstrap or Updater), all commands are executed
 					if(cmdIt == CurrentCommands.end())
 					{

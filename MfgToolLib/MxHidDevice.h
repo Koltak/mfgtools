@@ -196,7 +196,7 @@ public:
     typedef struct _MX_HID_DATA_REPORT
     {
         UCHAR ReportId;
-        UCHAR Payload[1024];
+        UCHAR Payload[1];
     }MX_HID_DATA_REPORT;
 	#pragma pack()
 
